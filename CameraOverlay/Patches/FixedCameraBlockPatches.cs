@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Harmony;
 using spaar.ModLoader;
 using UnityEngine;
@@ -17,6 +18,7 @@ namespace spaar.Mods.CameraOverlay.Patches
     static class CameraHolder
     {
       public static Dictionary<FixedCameraBlock, Camera> AllCameras = new Dictionary<FixedCameraBlock, Camera>();
+      public static Dictionary<FixedCameraBlock, bool> ActivationStatus = new Dictionary<FixedCameraBlock, bool>();
 
       private static int _counter = 0;
       public static int Counter
@@ -40,7 +42,6 @@ namespace spaar.Mods.CameraOverlay.Patches
 
         if (!CameraHolder.AllCameras.ContainsKey(__instance) && StatMaster.isSimulating)
         {
-          var mo = MouseOrbit.Instance.transform;
           var camGO = new GameObject("Camera " + CameraHolder.Counter);
           var cam = camGO.AddComponent<Camera>();
           cam.enabled = false;
@@ -56,6 +57,9 @@ namespace spaar.Mods.CameraOverlay.Patches
           cam.fieldOfView = oCam.fieldOfView;
 
           CameraHolder.AllCameras.Add(__instance, cam);
+
+          if (__instance.GetPrivateField<bool>("simulationClone"))
+            CameraHolder.ActivationStatus.Add(__instance, false);
         }
       }
     }
@@ -98,24 +102,56 @@ namespace spaar.Mods.CameraOverlay.Patches
     {
       static void Postfix(FixedCameraBlock __instance)
       {
-        if (!IsOverlayCam(__instance)) return;
-
         if (__instance.GetPrivateField<MKey>("activateKey").IsPressed)
         {
-          __instance.StartCoroutine(FixPositionAndFOV(__instance, MouseOrbit.Instance.cam.fieldOfView));
+          if (IsOverlayCam(__instance))
+          {
+            // If an overlay cam is activated or deactivated, make sure it's parented correctly and prevent other cameras being affected
+            var previouslyActive = FixedCameraController.Instance.cameras.Find(cam => cam.isActive && !IsOverlayCam(cam));
+            CameraHolder.ActivationStatus[__instance] = !CameraHolder.ActivationStatus[__instance];
+
+            __instance.StartCoroutine(FixPositionAndFov(__instance, MouseOrbit.Instance.cam.fieldOfView,
+              previouslyActive));
+          }
+          else
+          {
+            // All cameras will be deactivated by FixedCameraControllers, restore overlay cams
+            __instance.StartCoroutine(RestoreOverlayCams());
+          }
         }
       }
 
-      static IEnumerator FixPositionAndFOV(FixedCameraBlock instance, float originalFov)
+      static IEnumerator FixPositionAndFov(FixedCameraBlock instance, float originalFov, FixedCameraBlock previouslyActiveCamera)
       {
         yield return null;
+
         FixedCameraController.Instance.SetPrivateField("isDirty", true);
         FixedCameraController.Instance.SetPrivateField("lastKey", instance.KeyCode);
         CameraHolder.AllCameras[instance].transform.parent =
           Game.MachineObjectTracker.ActiveMachine.SimulationMachine.GetChild(0);
         yield return null;
-        MouseOrbit.Instance.isActive = true;
-        MouseOrbit.Instance.cam.fieldOfView = originalFov;
+        if (previouslyActiveCamera == null)
+        {
+          MouseOrbit.Instance.isActive = true;
+          MouseOrbit.Instance.cam.fieldOfView = originalFov;
+        }
+        else
+        {
+          FixedCameraController.Instance.SetPrivateField("isDirty", true);
+          FixedCameraController.Instance.SetPrivateField("lastKey", previouslyActiveCamera.KeyCode);
+          yield return null;
+          instance.StartCoroutine(RestoreOverlayCams());
+        }
+      }
+
+      static IEnumerator RestoreOverlayCams()
+      {
+        yield return null;
+        yield return null;
+        foreach (var cam in FixedCameraController.Instance.cameras.Where(IsOverlayCam))
+        {
+          cam.isActive = CameraHolder.ActivationStatus[cam];
+        }
       }
     }
 
