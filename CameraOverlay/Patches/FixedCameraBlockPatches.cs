@@ -173,8 +173,8 @@ namespace spaar.Mods.CameraOverlay.Patches
           }
           else
           {
-            // All cameras will be deactivated by FixedCameraControllers, restore overlay cams
-            __instance.StartCoroutine(RestoreOverlayCams());
+            // Temporarily deactivate overlay cams as to not confuse FixedCameraController, then activate them again
+            __instance.StartCoroutine(ToggleOverlayCams());
           }
         }
       }
@@ -199,11 +199,15 @@ namespace spaar.Mods.CameraOverlay.Patches
           FixedCameraController.Instance.SetPrivateField("lastKey", previouslyActiveCamera.KeyCode);
           yield return null;
         }
-        instance.StartCoroutine(RestoreOverlayCams());
+        instance.StartCoroutine(ToggleOverlayCams());
       }
 
-      static IEnumerator RestoreOverlayCams()
+      static IEnumerator ToggleOverlayCams()
       {
+        foreach (var cam in FixedCameraController.Instance.cameras.Where(IsOverlayCam))
+        {
+          cam.isActive = false;
+        }
         yield return null;
         yield return null;
         foreach (var cam in FixedCameraController.Instance.cameras.Where(IsOverlayCam))
