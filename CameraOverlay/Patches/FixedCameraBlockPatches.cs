@@ -83,19 +83,16 @@ namespace spaar.Mods.CameraOverlay.Patches
 
         if (!CameraHolder.AllCameras.ContainsKey(__instance) && StatMaster.isSimulating)
         {
-          var camGO = new GameObject("Camera " + CameraHolder.Counter);
-          var cam = camGO.AddComponent<Camera>();
+          var camGO = (GameObject) GameObject.Instantiate(MouseOrbit.Instance.gameObject);
+          camGO.SetActive(false);
+          camGO.name = "Camera " + CameraHolder.Counter;
+          camGO.tag = "Untagged";
+          GameObject.Destroy(camGO.GetComponent<MouseOrbit>());
+          var cam = camGO.GetComponent<Camera>();
           cam.enabled = false;
           cam.depth = 1;
           cam.rect = new Rect(0.8f, 0.8f, 0.2f, 0.2f);
-
-          var oCam = MouseOrbit.Instance.cam;
-          cam.nearClipPlane = oCam.nearClipPlane;
-          cam.farClipPlane = oCam.farClipPlane;
-          cam.renderingPath = oCam.renderingPath;
-          cam.cullingMask = oCam.cullingMask;
-          cam.useOcclusionCulling = oCam.useOcclusionCulling;
-          cam.fieldOfView = oCam.fieldOfView;
+          camGO.SetActive(true);
 
           CameraHolder.AllCameras.Add(__instance, cam);
 
