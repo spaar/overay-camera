@@ -119,12 +119,15 @@ namespace spaar.Mods.CameraOverlay.Patches
       {
         if (IsOverlayCam(__instance))
         {
-          var cam = CameraHolder.AllCameras[__instance];
-          var x = __instance.Sliders.Find(s => s.Key == "overlay-x").Value;
-          var y = __instance.Sliders.Find(s => s.Key == "overlay-y").Value;
-          var width = __instance.Sliders.Find(s => s.Key == "overlay-width").Value;
-          var height = __instance.Sliders.Find(s => s.Key == "overlay-height").Value;
-          cam.rect = new Rect(x, y, width, height);
+          Camera cam;
+          if (CameraHolder.AllCameras.TryGetValue(__instance, out cam))
+          {
+            var x = __instance.Sliders.Find(s => s.Key == "overlay-x").Value;
+            var y = __instance.Sliders.Find(s => s.Key == "overlay-y").Value;
+            var width = __instance.Sliders.Find(s => s.Key == "overlay-width").Value;
+            var height = __instance.Sliders.Find(s => s.Key == "overlay-height").Value;
+            cam.rect = new Rect(x, y, width, height);
+          }
         }
       }
     }
