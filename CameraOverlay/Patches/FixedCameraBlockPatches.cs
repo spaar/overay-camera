@@ -39,6 +39,47 @@ namespace spaar.Mods.CameraOverlay.Patches
         {
           "Overlay", "overlay", false
         });
+        var xSlider = __instance.CallPrivateMethod<MSlider>("AddSlider", new Type[]
+        {
+          typeof(string), typeof(string), typeof(float), typeof(float), typeof(float)
+        }, new object[]
+        {
+          "X Position", "overlay-x", 0.8f, 0.0f, 1.0f
+        });
+        var ySlider = __instance.CallPrivateMethod<MSlider>("AddSlider", new Type[]
+        {
+          typeof(string), typeof(string), typeof(float), typeof(float), typeof(float)
+        }, new object[]
+        {
+          "Y Position", "overlay-y", 0.8f, 0.0f, 1.0f
+        });
+        var widthSlider = __instance.CallPrivateMethod<MSlider>("AddSlider", new Type[]
+        {
+          typeof(string), typeof(string), typeof(float), typeof(float), typeof(float)
+        }, new object[]
+        {
+          "Width", "overlay-width", 0.2f, 0.0f, 1.0f
+        });
+        var heightSlider = __instance.CallPrivateMethod<MSlider>("AddSlider", new Type[]
+        {
+          typeof(string), typeof(string), typeof(float), typeof(float), typeof(float)
+        }, new object[]
+        {
+          "Height", "overlay-height", 0.2f, 0.0f, 1.0f
+        });
+
+        xSlider.DisplayInMapper = false;
+        ySlider.DisplayInMapper = false;
+        widthSlider.DisplayInMapper = false;
+        heightSlider.DisplayInMapper = false;
+
+        toggle.Toggled += active =>
+        {
+          xSlider.DisplayInMapper = active;
+          ySlider.DisplayInMapper = active;
+          widthSlider.DisplayInMapper = active;
+          heightSlider.DisplayInMapper = active;
+        };
 
         if (!CameraHolder.AllCameras.ContainsKey(__instance) && StatMaster.isSimulating)
         {
@@ -71,6 +112,23 @@ namespace spaar.Mods.CameraOverlay.Patches
       {
         if (IsOverlayCam(__instance))
           __instance.SetPrivateField("cameraTransform", CameraHolder.AllCameras[__instance].transform);
+      }
+    }
+
+    [HarmonyPatch(typeof(FixedCameraBlock), "OnLoad", new Type[] { typeof(XDataHolder) })]
+    class OnLoad
+    {
+      static void Postfix(FixedCameraBlock __instance)
+      {
+        if (IsOverlayCam(__instance))
+        {
+          var cam = CameraHolder.AllCameras[__instance];
+          var x = __instance.Sliders.Find(s => s.Key == "overlay-x").Value;
+          var y = __instance.Sliders.Find(s => s.Key == "overlay-y").Value;
+          var width = __instance.Sliders.Find(s => s.Key == "overlay-width").Value;
+          var height = __instance.Sliders.Find(s => s.Key == "overlay-height").Value;
+          cam.rect = new Rect(x, y, width, height);
+        }
       }
     }
 
@@ -140,8 +198,8 @@ namespace spaar.Mods.CameraOverlay.Patches
           FixedCameraController.Instance.SetPrivateField("isDirty", true);
           FixedCameraController.Instance.SetPrivateField("lastKey", previouslyActiveCamera.KeyCode);
           yield return null;
-          instance.StartCoroutine(RestoreOverlayCams());
         }
+        instance.StartCoroutine(RestoreOverlayCams());
       }
 
       static IEnumerator RestoreOverlayCams()
